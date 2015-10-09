@@ -10,7 +10,9 @@ import string,cgi,time
 from os import curdir, sep
 from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
 import base64
-
+from pyDes import *
+import os.path
+import random
 port = 8787;
 
 class MyHandler(BaseHTTPRequestHandler):
@@ -46,18 +48,16 @@ class MyHandler(BaseHTTPRequestHandler):
         print 'do_GET query: ' + urlparse(self.path).query;
        
         args = parse_qs(urlparse(self.path).query);
-        
-        if 'u' in args and 'p' in args:
-        	username = args['u'][0];
-        	password = args['p'][0];
-        	ustv = ustvnow.Ustvnow(username, password);
-        	
-        elif self.path.startswith('/play'):
-        
+	f = open("cred","r");
+	grab = f.readline().rstrip();
+        username = base64.b64decode(grab);
+	grab = f.readline().rstrip();
+	f.close();
+        if self.path.startswith('/play'):
         	args = parse_qs(base64.b64decode(self.path[5:]));
-        	username = args['u'][0];
-        	password = args['p'][0];
-        	ustv = ustvnow.Ustvnow(username, password);
+        password = args['p'][0];
+	decrypt = des("DESCRYPT", CBC, password, pad=None, padmode=PAD_PKCS5).decrypt(grab);
+        ustv = ustvnow.Ustvnow(username, decrypt);
         	
 
         try:
@@ -200,8 +200,18 @@ def startServer():
 
 
 if __name__ == '__main__':
+	if os.path.isfile("cred"):
+		print 'credentials found'
+	else:
+		f = open("cred","w+");
+		print 'please enter credentials:'
+		username = base64.b64encode(str(raw_input("username: ")))
+		key = str(random.randint(0,7))+str(random.randint(0,7))+str(random.randint(0,7))+str(random.randint(0,7))+str(random.randint(0,7))+str(random.randint(0,7))+str(random.randint(0,7))+str(random.randint(0,7))
+		passwd = des("DESCRYPT", CBC, key, pad=None, padmode=PAD_PKCS5).encrypt(str(raw_input("please enter password:")));
+		print 'encrypted witn p='+key;
+		print username
+		print passwd
+		f.write(username+'\n'+passwd);
+		f.close()
 	startServer();
 	
-
-        
-
